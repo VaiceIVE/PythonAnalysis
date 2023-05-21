@@ -21,5 +21,5 @@ def analyze_simple():
         {'adress': 'Владимирская ул., д.12', 'workname': 'Замена лестницы'},
         {'adress': 'Кусковская ул., д.1', 'workname': 'Замена крыльца'},
         {'adress': 'Бойцовая ул., д.11', 'workname': 'Сбивание сосулек'}
-    ], 'type': 'base'}
+    ], 'type': 'smartDb'}
 
