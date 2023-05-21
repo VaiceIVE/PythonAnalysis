@@ -17,9 +17,9 @@ app.add_middleware(
 @app.get('/analyze')
 def analyze_simple():
     return{'result': [
-        {'adress': 'Красковская ул., д.121А', 'workname': 'Ремонт освещения', 'type': 'base'},
-        {'adress': 'Владимирская ул., д.12', 'workname': 'Замена лестницы', 'type': 'smartDb'},
-        {'adress': 'Кусковская ул., д.1', 'workname': 'Замена крыльца', 'type': 'smartFile'},
-        {'adress': 'Бойцовая ул., д.11', 'workname': 'Сбивание сосулек', 'type': 'smartUrl'}
-    ]}
+        {'adress': 'Красковская ул., д.121А', 'workname': 'Ремонт освещения'},
+        {'adress': 'Владимирская ул., д.12', 'workname': 'Замена лестницы'},
+        {'adress': 'Кусковская ул., д.1', 'workname': 'Замена крыльца'},
+        {'adress': 'Бойцовая ул., д.11', 'workname': 'Сбивание сосулек'}
+    ], 'type': 'base'}
 
