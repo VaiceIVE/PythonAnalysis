@@ -17,3 +17,8 @@ def Get(id):
     result = results.find_one({'_id': ObjectId(id)})
 
     return result
+
+def Getall():
+    result = results.find()
+
+    return result
