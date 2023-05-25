@@ -1,4 +1,6 @@
 from openpyxl import *
+import io
+from tempfile import NamedTemporaryFile
 from openpyxl.utils import get_column_letter
 def create_xls(result):
     wb = Workbook()
@@ -19,7 +21,11 @@ def create_xls(result):
         for (work_count, work_data) in enumerate(address_data['workname']):
             ws.cell(row=currentrow + work_count, column=2, value=work_data)
         currentrow += len(address_data['workname'])
-    wb.save("Result.xls")
+    with NamedTemporaryFile() as tmp:
+        wb.save(tmp.name)
+        tmp.seek(0)
+        stream = tmp.read()
+        return io.BytesIO(stream)
 
 def create_xlsx(result):
     wb = Workbook()
@@ -40,4 +46,8 @@ def create_xlsx(result):
         for (work_count, work_data) in enumerate(address_data['workname']):
             ws.cell(row=currentrow + work_count, column=2, value=work_data)
         currentrow += len(address_data['workname'])
-    wb.save("Result.xlsx")
+    with NamedTemporaryFile() as tmp:
+        wb.save(tmp.name)
+        tmp.seek(0)
+        stream = tmp.read()
+        return io.BytesIO(stream)
