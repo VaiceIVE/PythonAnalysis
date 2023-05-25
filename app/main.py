@@ -80,6 +80,12 @@ def get_history():
     response = list()
 
     for result in results:
-        response.append({"type": result['type'], "date": result['date'], "criterias": result['criterias']})
+        response.append({"type": result['type'], "date": result['date'], "criterias": result['criterias'], '_id': str(result['_id']) })
 
     return response
+
+@app.get('/analyze/{id}')
+def get_analyze_by_id(id):
+    result = Get(id)
+
+    return result

@@ -15,7 +15,7 @@ def Save(result):
 
 def Get(id):
     result = results.find_one({'_id': ObjectId(id)})
-
+    result['_id'] = str(result['_id'])
     return result
 
 def Getall():
