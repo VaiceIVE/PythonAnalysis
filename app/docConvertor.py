@@ -2,6 +2,12 @@ from openpyxl import *
 import io
 from tempfile import NamedTemporaryFile
 from openpyxl.utils import get_column_letter
+import csv
+import pandas as pd
+
+
+
+
 def create_xls(result):
     wb = Workbook()
     ws = wb[wb.sheetnames[0]]
@@ -26,8 +32,8 @@ def create_xls(result):
         tmp.seek(0)
         stream = tmp.read()
         return io.BytesIO(stream)
-
-def create_xlsx(result):
+    
+def create_csv(result):
     wb = Workbook()
     ws = wb[wb.sheetnames[0]]
     ws.title = "Отчет об анализе"
@@ -48,6 +54,9 @@ def create_xlsx(result):
         currentrow += len(address_data['workname'])
     with NamedTemporaryFile() as tmp:
         wb.save(tmp.name)
-        tmp.seek(0)
-        stream = tmp.read()
-        return io.BytesIO(stream)
+        read_file = pd.read_excel (tmp.name, sheet_name='Отчет об анализе')
+        with NamedTemporaryFile() as csvtmp:
+            read_file.to_csv (csvtmp.name, index = None, header=True)
+            csvtmp.seek(0)
+            stream = csvtmp.read()
+            return io.BytesIO(stream)

@@ -4,8 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 from mongoService import Save, Get
-from docConvertor import create_xls, create_xlsx
+from docConvertor import create_xls, create_csv
 from fastapi.responses import StreamingResponse
+
 
 
 
@@ -53,14 +54,20 @@ def get_worktypes():
 def get_object_categories():
     return ['Многоквартирный дом']
 
-@app.get('/xlsbyid/{id}')
-def get_xls_report_by_analysis_id(id):
+@app.get('/xlsbyid/{id}/{name}')
+def get_xls_report_by_analysis_id(id, name):
     result = Get(id)
 
-    return StreamingResponse(create_xls(result), media_type="application/vnd.ms-excel")
+    return StreamingResponse(create_xls(result), headers={'Content-Disposition': f'attachment; filename="{name}.xls"'}, media_type="application/vnd.ms-excel")
 
-@app.get('/xlsxbyid/{id}')
-def get_xls_report_by_analysis_id(id):
+@app.get('/xlsxbyid/{id}/{name}')
+def get_xlsx_report_by_analysis_id(id, name):
     result = Get(id)
 
-    return StreamingResponse(create_xls(result), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return StreamingResponse(create_xls(result), headers={'Content-Disposition': f'attachment; filename="{name}.xlsx"'}, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.get('/csvbyid/{id}/{name}')
+def get_xlsx_report_by_analysis_id(id, name):
+    result = Get(id)
+
+    return StreamingResponse(create_csv(result), headers={'Content-Disposition': f'attachment; filename="{name}.csv"'}, media_type="application/vnd.ms-excel")
