@@ -58,16 +58,16 @@ def get_object_categories():
 def get_xls_report_by_analysis_id(id, name):
     result = Get(id)
 
-    return StreamingResponse(create_xls(result), headers={'Content-Disposition': f'attachment; filename="{name}.xls"'}, media_type="application/vnd.ms-excel")
+    return StreamingResponse(create_xls(result), headers={'Content-Disposition': f'attachment; filename="{name}.xls"'.encode('utf-8').decode('unicode-escape')}, media_type="application/vnd.ms-excel")
 
 @app.get('/xlsxbyid/{id}/{name}')
 def get_xlsx_report_by_analysis_id(id, name):
     result = Get(id)
 
-    return StreamingResponse(create_xls(result), headers={'Content-Disposition': f'attachment; filename="{name}.xlsx"'}, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return StreamingResponse(create_xls(result), headers={'Content-Disposition': f'attachment; filename="{name}.xlsx"'.encode('utf-8').decode('unicode-escape')}, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.get('/csvbyid/{id}/{name}')
 def get_xlsx_report_by_analysis_id(id, name):
     result = Get(id)
 
-    return StreamingResponse(create_csv(result), headers={'Content-Disposition': f'attachment; filename="{name}.csv"'}, media_type="application/vnd.ms-excel")
+    return StreamingResponse(create_csv(result), headers={'Content-Disposition': f'attachment; filename="{name}.csv"'.encode('utf-8').decode('unicode-escape')}, media_type="application/vnd.ms-excel")
