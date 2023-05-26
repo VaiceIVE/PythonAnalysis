@@ -92,7 +92,7 @@ def get_analyze_by_id(id):
 
     return result
 
-@app.post('/updateanalysis')
+@app.post('/analyze/update')
 def update_analysis_data(result: IResult):
     Delete(result.id)
     id = Save(result.ToDict())
