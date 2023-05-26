@@ -13,6 +13,10 @@ def Save(result):
     result_id = results.insert_one(result).inserted_id
     return str(result_id)
 
+def Delete(id):
+    result_id = results.delete_one({'_id': ObjectId(id)})
+    return str(result_id)
+
 def Get(id):
     result = results.find_one({'_id': ObjectId(id)})
     result['_id'] = str(result['_id'])

@@ -1,8 +1,12 @@
-class IResult:
-    def result(self) -> list(): 
-        pass
-    def type(self) -> str:
-        pass
-    def id(self) -> str:
-        pass
+from pydantic import BaseModel
+from bson.objectid import ObjectId
+
+class IResult(BaseModel):
+    result: list
+    type: str
+    criterias: list
+    date: str
+    id: str
+    def ToDict(this):
+        return dict({"result": this.result, "type": this.type, "criterias": this.criterias, "date": this.date, "_id": ObjectId(this.id)})
     
