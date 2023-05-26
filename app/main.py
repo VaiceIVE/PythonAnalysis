@@ -49,7 +49,7 @@ def analyze_simple():
 
 @app.get('/worktypes')
 def get_worktypes():
-    return ['']
+    return ['Капитальный ремонт']
 
 @app.get('/objcategories')
 def get_object_categories():

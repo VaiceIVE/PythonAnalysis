@@ -19,7 +19,8 @@ def Delete(id):
 
 def Get(id):
     result = results.find_one({'_id': ObjectId(id)})
-    result['_id'] = str(result['_id'])
+    result['id'] = str(result['_id'])
+    result.pop('_id')
     return result
 
 def Getall():
