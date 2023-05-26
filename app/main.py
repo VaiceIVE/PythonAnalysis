@@ -7,6 +7,7 @@ from mongoService import Save, Get, Getall, Delete
 from docConvertor import create_xls, create_csv
 from fastapi.responses import StreamingResponse
 from IResult import IResult
+from ICriteria import ICriteria
 
 
 
@@ -94,10 +95,30 @@ def get_analyze_by_id(id):
 
 @app.post('/analyze/update')
 def update_analysis_data(result: IResult):
-    print(result, flush=True)
-    print(result.id, flush=True)
     Delete(result.id)
     id = Save(result.ToDict())
-    print(id, flush=True)
     return id
+
+@app.post('/analyze/criterized')
+def update_analysis_data(criterias: ICriteria):
+    objtype = criterias.obj
+    worktype = criterias.work
+    dates = criterias.date
+
+
+    mock_result = {'result': [
+        {'adress': 'улица Красковская, дом 121А', 'workname': ['Ремонт освещения', 'Сбивание сосулек'],"stats": {"Год постройки МКД": 1950, "Район": "Измайлово"}, "priority": "Срочная работа"},
+        {'adress': 'улица Владимирская, дом 12', 'workname': ['Замена лестницы', 'Замена крыльца'],  "stats": {"Год постройки МКД": 1960, "Район": "Внуково"},"priority": "Плановая работа"},
+        {'adress': 'улица Кусковская, дом 1', 'workname': ['Замена крыльца', 'Ремонт освещения'],  "stats": {"Год постройки МКД": 1970, "Район": "Сколково"},"priority": "Плановая работа"},
+        {'adress': 'улица Бойцовая, дом 11', 'workname': ['Сбивание сосулек', 'Замена лестницы'],  "stats": {"Год постройки МКД": 1980, "Район": "Мытищи"},"priority": "Срочная работа"}
+    ], 'type': 'base', 'criterias': [objtype, worktype, dates], 'date': '03.08.2003'}
+
+    
+    id = Save(mock_result)
+    return {'result': [
+        {'adress': 'улица Красковская, дом 121А', 'workname': ['Ремонт освещения', 'Сбивание сосулек'],"stats": {"Год постройки МКД": 1950, "Район": "Измайлово"}, "priority": "Срочная работа"},
+        {'adress': 'улица Владимирская, дом 12', 'workname': ['Замена лестницы', 'Замена крыльца'],  "stats": {"Год постройки МКД": 1960, "Район": "Внуково"},"priority": "Плановая работа"},
+        {'adress': 'улица Кусковская, дом 1', 'workname': ['Замена крыльца', 'Ремонт освещения'],  "stats": {"Год постройки МКД": 1970, "Район": "Сколково"},"priority": "Плановая работа"},
+        {'adress': 'улица Бойцовая, дом 11', 'workname': ['Сбивание сосулек', 'Замена лестницы'],  "stats": {"Год постройки МКД": 1980, "Район": "Мытищи"},"priority": "Срочная работа"}
+    ], 'type': 'base', 'criterias': [objtype, worktype, dates], 'date': '03.08.2003', "id" = id}
     
