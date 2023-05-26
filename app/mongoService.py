@@ -10,8 +10,9 @@ client = MongoClient(os.environ['DB_URL'],
 results = client.LCT.results
 
 def Save(result):
-    result['_id'] = result['id']
-    result.pop('id')
+    if 'id' in result:
+        result['_id'] = result['id']
+        result.pop('id')
     result_id = results.insert_one(result).inserted_id
     return str(result_id)
 
