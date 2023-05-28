@@ -22,6 +22,8 @@ def Delete(id):
 
 def Get(id):
     result = results.find_one({'_id': ObjectId(id)})
+    if result is None:
+        return False
     result['id'] = str(result['_id'])
     result.pop('_id')
     return result

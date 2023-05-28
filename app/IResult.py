@@ -9,4 +9,4 @@ class IResult(BaseModel):
     id: str
     def ToDict(this):
         return dict({"result": this.result, "type": this.type, "criterias": this.criterias, "date": this.date, "id": ObjectId(this.id)})
-    
+        
