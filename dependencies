@@ -6,4 +6,4 @@ openpyxl
 pymongo
 pandas
 catboost
-
+requests
