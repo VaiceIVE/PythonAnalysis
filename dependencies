@@ -1,4 +1,8 @@
 fastapi
 uvicorn
 gunicorn
+python-dotenv
+openpyxl
+pymongo
+pandas
 
