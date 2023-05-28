@@ -80,14 +80,11 @@ def analyze_basic():
     model.load_model('./model/catboost_model2t.bin')
 
     with NamedTemporaryFile() as tmp:
-        data = requests.get('http://localhost:8001/permanent/normalized_data.csv')
-
-        #print(str(data.content).encode("utf8"))
+        data = requests.get('http://178.170.192.87:8004/permanent/normalized_data.csv')
 
         open(tmp.name, 'wb').write(data.content)
 
         input_data = pd.read_csv(tmp.name, encoding='utf8')
-        #input_data = input_data.to_csv(tmp.name, encoding='utf8')
 
         print(input_data)
 
@@ -104,7 +101,7 @@ def analyze_basic():
     print(result.info())
 
     for index, row in result.iterrows():
-        issues_data.append({'adress': row['Адрес'], 'issue': row[0]})
+        issues_data.append({'adress': row['Адрес'], 'workname': [row[0]]})
 
     analysis_result = {'result': issues_data, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
 
