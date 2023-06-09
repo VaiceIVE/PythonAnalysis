@@ -425,7 +425,7 @@ def advanced_analysis(criterias: ICriteria):
     houses_data = houses_data.fillna(0)
     
     issues_data = []
-    result = result.drop_duplicates(subset = ['Pretty Addresses', 'First Result'] if 'First Result' in result.index else ['Pretty Addresses', 'Second Result'] )
+    result = result.drop_duplicates(subset = ['Pretty Addresses', 'First Result'] if 'First Result' in result.columns else ['Pretty Addresses', 'Second Result'] )
     print("Final result")
     print(result)
     for index, row in result.iterrows():
@@ -438,7 +438,7 @@ def advanced_analysis(criterias: ICriteria):
         #print(materials_dict[materials_dict["ID"] == material_id])
         #print(roof_id)
         #print("0" if roof_id == False else roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0])
-        workname = worksdict[row['First Result']][0] if 'First Result' in result.index else row['Second Result']
+        workname = worksdict[row['First Result']][0] if 'First Result' in result.columns else row['Second Result']
         issues_data.append(
         {
         'adress': row['Адрес'] if 'Адрес' in row.index else row['Address'].replace('Российская Федерация,', '').replace('город Москва,', ''), 
