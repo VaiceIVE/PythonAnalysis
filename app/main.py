@@ -80,7 +80,9 @@ def analyze_basic():
     with open('issuestoworks.json') as json_file:
         worksdict = json.load(json_file)
 
-    materials_dict = pd.read_excel('materials.xlsx')
+    roofs_dict = pd.read_excel('Storage/roofs.xlsx')
+
+    materials_dict = pd.read_excel('Storage/materials.xlsx')
 
     processor = Processor([GEO, ADDRESS])
 
@@ -202,27 +204,41 @@ def analyze_basic():
     print(allresult.info())
 
     houses_data = pd.read_csv('housesdata.csv')
+    houses_data = houses_data.fillna(0)
     print(houses_data.info())
 
     print(materials_dict.info())
 
-    #, "Материал стен": materials_dict[materials_dict['ID'] == houses_data[houses_data["NAME"] == row['Pretty Addresses']]["COL_769"]]['NAME']
+    allresult = allresult.drop_duplicates(subset='Pretty Addresses', keep="first")
+
     for index, row in allresult.iterrows():
         address_info = houses_data[houses_data["NAME"] == row['Pretty Addresses']]
         #print(address_info)
         material_id = False if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else houses_data[houses_data["NAME"] == row['Pretty Addresses']].iloc[0]["COL_769"]
+        roof_id = False if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else houses_data[houses_data["NAME"] == row['Pretty Addresses']].iloc[0]["COL_781"]
         #print(material_id)
         #print(materials_dict.head(5))
         #print(materials_dict[materials_dict["ID"] == material_id])
+        print(roof_id)
+        print("0" if roof_id == False else roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0])
         issues_data.append(
         {
-        'adress': row['Pretty Addresses'], 
-        'workname': [worksdict[row['First Result']][0], row['Second Result']], 
+        'adress': 'Улица ' + row['Pretty Addresses'].split()[0] + ' дом ' + row['Pretty Addresses'].split()[1], 
+        'workname': [worksdict[row['First Result']][0].title(), row['Second Result'].title()], 
         "stats" : 
         {
             "Год постройки МКД" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_756"],
-            "Материал стен": "0" if material_id == False else (materials_dict[materials_dict["ID"] == float(material_id)]['NAME'].iloc[0]).title()
-        }})
+            "Материал стен": "0" if material_id == False else (materials_dict[materials_dict["ID"] == float(material_id)/1]['NAME'].iloc[0]).title(),
+            "Количество этажей" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_759"],
+            "Количество подъездов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_760"],
+            "Количество квартир" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_761"],
+            "Износ объекта (по БТИ)" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_766"],
+            "Материал кровли" : "0" if roof_id == False else (roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0]).title(),
+            "Количество грузовых лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_3363"],
+            "Количество пассажирских лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_771"]
+        },
+        'priority': 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая Работа"
+        })
 
     analysis_result = {'result': issues_data, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
 
