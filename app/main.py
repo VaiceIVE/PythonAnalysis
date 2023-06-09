@@ -211,6 +211,8 @@ def analyze_basic():
 
     allresult = allresult.drop_duplicates(subset='Pretty Addresses', keep="first")
 
+    allresult = allresult.reset_index()
+
     for index, row in allresult.iterrows():
         address_info = houses_data[houses_data["NAME"] == row['Pretty Addresses']]
         #print(address_info)
@@ -237,8 +239,11 @@ def analyze_basic():
             "Количество грузовых лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_3363"],
             "Количество пассажирских лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_771"]
         },
-        'priority': 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая работа"
+        'priority': 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая работа",
+        'causes': []
         })
+        if worksdict[row['First Result']][1] == '1': issues_data[index]['causes'].append('МосГаз')
+        if worksdict[row['First Result']][2] == '1': issues_data[index]['causes'].append('Авария')
 
     analysis_result = {'result': issues_data, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
 
@@ -428,6 +433,7 @@ def advanced_analysis(criterias: ICriteria):
     result = result.drop_duplicates(subset = ['Pretty Addresses', 'First Result'] if 'First Result' in result.columns else ['Pretty Addresses', 'Second Result'] )
     print("Final result")
     print(result)
+    result = result.reset_index()
     for index, row in result.iterrows():
         address_info = houses_data[houses_data["NAME"] == row['Pretty Addresses']]
         #print(address_info)
@@ -455,8 +461,12 @@ def advanced_analysis(criterias: ICriteria):
             "Количество грузовых лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_3363"],
             "Количество пассажирских лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_771"]
         },
-        'priority': "Плановая работа" if 'First Result' not in row.index else 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая работа"
+        'priority': "Плановая работа" if 'First Result' not in row.index else 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая работа",
+        'causes':[]
         })
+        if 'First Result' in row.index:
+            if worksdict[row['First Result']][1] == '1': issues_data[index]['causes'].append('МосГаз')
+            if worksdict[row['First Result']][2] == '1': issues_data[index]['causes'].append('Авария')
 
     if 'First Result' not in row.index:
         new_issues = []
