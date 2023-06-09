@@ -237,7 +237,7 @@ def analyze_basic():
             "Количество грузовых лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_3363"],
             "Количество пассажирских лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_771"]
         },
-        'priority': 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая Работа"
+        'priority': 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая работа"
         })
 
     analysis_result = {'result': issues_data, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
@@ -254,7 +254,7 @@ def analyze_basic():
 
 @app.get('/worktypes')
 def get_worktypes():
-    return ['Капитальный ремонт', 'Работы по содержанию МКД']
+    return ['Капитальный ремонт', 'Работы по содержанию']
 
 @app.get('/objcategories')
 def get_object_categories():
@@ -306,28 +306,199 @@ def update_analysis_data(result: IResult):
     return id
 
 @app.post('/advanced')
-def update_analysis_data(criterias: ICriteria):
+def advanced_analysis(criterias: ICriteria):
     objtype = criterias.obj
     worktype = criterias.work
     dates = criterias.date
+    worksdict = dict()
+    with open('issuestoworks.json') as json_file:
+        worksdict = json.load(json_file)
+
+    roofs_dict = pd.read_excel('Storage/roofs.xlsx')
+
+    materials_dict = pd.read_excel('Storage/materials.xlsx')
+
+    processor = Processor([GEO, ADDRESS])
+
+    result = []
+
+    if worktype == 'Работы по содержанию':
+        model = CatBoostClassifier()
+
+        model.load_model('./model/catboost_model2t.bin')
+
+        with NamedTemporaryFile() as tmp:
+            data = requests.get('http://178.170.192.87:8004/permanent/normalized_data.csv')
+
+            open(tmp.name, 'wb').write(data.content)
+
+            input_data = pd.read_csv(tmp.name, encoding='utf8')
+
+            print(input_data)
+            pretty_addresses = []
+            input_data = input_data.drop("Unnamed: 0", axis=1)
+            banlist = []
+            addresses = input_data.iloc[:, 2]
+            for index, text in enumerate(addresses):
+                result = processor(str(text))
+                if result.matches:
+                    referent = result.matches[0].referent
+                    display_shortcuts(referent)
+                    if len(addr) < 2:
+                        banlist.append(index)
+                    elif 'улица' not in addr[0].keys() or 'дом' not in addr[-1].keys():
+                        banlist.append(index)
+                    else:
+                        pretty_addresses.append(addr[0]['улица'].title() + ' ' + addr[-1]['дом'])
+                        #print(addr)
+                addr.clear()
+            #print(banlist)
+
+            input_data = input_data.drop(banlist)
+
+            result = model.predict(input_data)
+
+            #print(result.shape)
+
+            result = pd.DataFrame(data=result, columns=['First Result'], index=list(range(len(result))))
+
+            result['Pretty Addresses'] = pretty_addresses
+
+            result = pd.concat([result, input_data], axis=1)
+
+            result = result.dropna()        
+
+            print(result)
+    elif worktype == 'Капитальный ремонт':
+
+        secondmodel = CatBoostClassifier()
+
+        secondmodel.load_model('./model/catboost_model3t.bin')
+        
+        with NamedTemporaryFile() as tmp:
+            data = requests.get('http://178.170.192.87:8004/permanent/normalized_works.csv')
+
+            open(tmp.name, 'wb').write(data.content)
+
+            input_data = pd.read_csv(tmp.name, encoding='utf8')
+
+            pretty_addresses = []
+
+            print(input_data)
+            input_data = input_data.drop("Unnamed: 0", axis=1)
+            print(input_data.shape)
+            banlist = []
+            addresses = input_data.iloc[:, 4]
+            for index, text in enumerate(addresses):
+                #print(text)
+                result = processor(str(text).replace('Российская Федерация,', '').replace('город Москва', '').replace('внутригородская территория муниципальный округ', ''))
+                if result.matches:
+                    referent = result.matches[0].referent
+                    display_shortcuts(referent)
+                    if len(addr) < 2:
+                        banlist.append(index)
+                    elif 'улица' not in addr[0].keys() or 'дом' not in addr[-1].keys():
+                        banlist.append(index)
+                    else:
+                        pretty_addresses.append(addr[0]['улица'].title() + ' ' + addr[-1]['дом'])
+                        #print(addr)
+                addr.clear()
+
+            input_data = input_data.drop(banlist)
+            print(banlist)
+            result = secondmodel.predict(input_data)
+
+            result = pd.DataFrame(data=result, columns=['Second Result'], index=list(range(len(result))))
+
+            result['Pretty Addresses'] = pretty_addresses
+
+            result = result.dropna()
+
+            result = pd.concat([result, input_data], axis=1)
+
+            result = result.dropna()
+
+            print(result)
 
 
-    mock_result = {'result': [
-        {'adress': 'улица Красковская, дом 121А', 'workname': ['Ремонт освещения', 'Сбивание сосулек'],"stats": {"Год постройки МКД": 1950, "Район": "Измайлово"}, "priority": "Срочная работа"},
-        {'adress': 'улица Владимирская, дом 12', 'workname': ['Замена лестницы', 'Замена крыльца'],  "stats": {"Год постройки МКД": 1960, "Район": "Внуково"},"priority": "Плановая работа"},
-        {'adress': 'улица Кусковская, дом 1', 'workname': ['Замена крыльца', 'Ремонт освещения'],  "stats": {"Год постройки МКД": 1970, "Район": "Сколково"},"priority": "Плановая работа"},
-        {'adress': 'улица Бойцовая, дом 11', 'workname': ['Сбивание сосулек', 'Замена лестницы'],  "stats": {"Год постройки МКД": 1980, "Район": "Мытищи"},"priority": "Срочная работа"}
-    ], 'type': 'criterizedDB', 'criterias': [objtype, worktype, dates], 'date': '03.08.2003'}
+    houses_data = pd.read_csv('housesdata.csv')
+    houses_data = houses_data.fillna(0)
+    
+    issues_data = []
+    result = result.drop_duplicates(subset = ['Pretty Addresses', 'First Result'] if 'First Result' in result.index else ['Pretty Addresses', 'Second Result'] )
+    print("Final result")
+    print(result)
+    for index, row in result.iterrows():
+        address_info = houses_data[houses_data["NAME"] == row['Pretty Addresses']]
+        #print(address_info)
+        material_id = False if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else houses_data[houses_data["NAME"] == row['Pretty Addresses']].iloc[0]["COL_769"]
+        roof_id = False if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else houses_data[houses_data["NAME"] == row['Pretty Addresses']].iloc[0]["COL_781"]
+        #print(material_id)
+        #print(materials_dict.head(5))
+        #print(materials_dict[materials_dict["ID"] == material_id])
+        #print(roof_id)
+        #print("0" if roof_id == False else roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0])
+        workname = worksdict[row['First Result']][0] if 'First Result' in result.index else row['Second Result']
+        issues_data.append(
+        {
+        'adress': row['Адрес'] if 'Адрес' in row.index else row['Address'].replace('Российская Федерация,', '').replace('город Москва,', ''), 
+        'workname': [workname.title()], 
+        "stats" : 
+        {
+            "Год постройки МКД" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_756"],
+            "Материал стен": "0" if material_id == False else (materials_dict[materials_dict["ID"] == float(material_id)/1]['NAME'].iloc[0]).title(),
+            "Количество этажей" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_759"],
+            "Количество подъездов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_760"],
+            "Количество квартир" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_761"],
+            "Износ объекта (по БТИ)" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_766"],
+            "Материал кровли" : "0" if roof_id == False else (roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0]).title(),
+            "Количество грузовых лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_3363"],
+            "Количество пассажирских лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_771"]
+        },
+        'priority': "Плановая работа" if 'First Result' not in row.index else 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая работа"
+        })
+
+    if 'First Result' not in row.index:
+        new_issues = []
+        unique_addresses = []
+        for elem in issues_data:
+            if elem['adress'] not in unique_addresses:
+                unique_addresses.append(elem["adress"])
+        for address in unique_addresses:
+            address_works = []
+            address_priority = str()
+            address_stats = dict()
+            for issue in issues_data:
+                if issue["adress"] == address:
+                    address_stats = issue["stats"]
+                    address_priority = issue["priority"]
+                    address_works.append(issue["workname"][0])
+            new_issues.append({
+                'adress': address,
+                'workname': address_works,
+                'stats': address_stats,
+                'priority': address_priority
+            })
+        analysis_result = {'result': new_issues, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
+    else:
+        analysis_result = {'result': issues_data, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
+
+    id = Save(analysis_result)
+
+    analysis_result.pop('_id')
+    analysis_result['id'] = str(id)
+    #print(analysis_result)
+
+    return analysis_result
+
+
+
+
 
     
-    id = Save(mock_result)
-    return {'result': [
-        {'adress': 'улица Красковская, дом 121А', 'workname': ['Ремонт освещения', 'Сбивание сосулек'],"stats": {"Год постройки МКД": 1950, "Район": "Измайлово"}, "priority": "Срочная работа"},
-        {'adress': 'улица Владимирская, дом 12', 'workname': ['Замена лестницы', 'Замена крыльца'],  "stats": {"Год постройки МКД": 1960, "Район": "Внуково"},"priority": "Плановая работа"},
-        {'adress': 'улица Кусковская, дом 1', 'workname': ['Замена крыльца', 'Ремонт освещения'],  "stats": {"Год постройки МКД": 1970, "Район": "Сколково"},"priority": "Плановая работа"},
-        {'adress': 'улица Бойцовая, дом 11', 'workname': ['Сбивание сосулек', 'Замена лестницы'],  "stats": {"Год постройки МКД": 1980, "Район": "Мытищи"},"priority": "Срочная работа"}
-    ], 'type': 'criterizedDB', 'criterias': [objtype, worktype, dates], 'date': '03.08.2003', "_id": id}
 
+
+    
 @app.get('/updatedata')
 def update_houses_data():
     processor = Processor([GEO, ADDRESS])
