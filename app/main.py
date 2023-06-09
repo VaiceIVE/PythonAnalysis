@@ -254,7 +254,7 @@ def analyze_basic():
 
 @app.get('/worktypes')
 def get_worktypes():
-    return ['Капитальный ремонт']
+    return ['Капитальный ремонт', 'Работы по содержанию МКД']
 
 @app.get('/objcategories')
 def get_object_categories():
