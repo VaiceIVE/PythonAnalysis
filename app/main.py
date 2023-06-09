@@ -472,7 +472,7 @@ def advanced_analysis(criterias: ICriteria):
                 if issue["adress"] == address:
                     address_stats = issue["stats"]
                     address_priority = issue["priority"]
-                    address_works.append(issue["workname"][0])
+                    if issue["workname"][0] not in address_works: address_works.append(issue["workname"][0]) 
             new_issues.append({
                 'adress': address,
                 'workname': address_works,
