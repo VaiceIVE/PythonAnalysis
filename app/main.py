@@ -219,11 +219,11 @@ def analyze_basic():
         #print(material_id)
         #print(materials_dict.head(5))
         #print(materials_dict[materials_dict["ID"] == material_id])
-        print(roof_id)
-        print("0" if roof_id == False else roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0])
+        #print(roof_id)
+        #print("0" if roof_id == False else roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0])
         issues_data.append(
         {
-        'adress': 'Улица ' + row['Pretty Addresses'].split()[0] + ' дом ' + row['Pretty Addresses'].split()[1], 
+        'adress': row['Адрес'], 
         'workname': [worksdict[row['First Result']][0].title(), row['Second Result'].title()], 
         "stats" : 
         {
