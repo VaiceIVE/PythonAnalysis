@@ -479,9 +479,9 @@ def advanced_analysis(criterias: ICriteria):
                 'stats': address_stats,
                 'priority': address_priority
             })
-        analysis_result = {'result': new_issues, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
+        analysis_result = {'result': new_issues, 'type': 'Advanced', 'criterias': [objtype, worktype, dates], 'date': str(date.today()).replace('-', '.')}
     else:
-        analysis_result = {'result': issues_data, 'type': 'base', 'criterias': [''], 'date': str(date.today()).replace('-', '.')}
+        analysis_result = {'result': issues_data, 'type': 'Advanced', 'criterias': [objtype, worktype, dates], 'date': str(date.today()).replace('-', '.')}
 
     id = Save(analysis_result)
 
