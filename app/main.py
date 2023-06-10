@@ -7,7 +7,7 @@ from mongoService import Save, Get, Getall, Delete
 from docConvertor import create_xls, create_csv 
 from fastapi.responses import StreamingResponse
 from IResult import IResult
-from ICriteria import ICriteria
+from ICriteria import ICriteria, ICriteriaURL
 from catboost import CatBoostClassifier
 import requests
 from tempfile import NamedTemporaryFile
@@ -347,6 +347,7 @@ def advanced_analysis(criterias: ICriteria):
             for index, text in enumerate(addresses):
                 result = processor(str(text))
                 if result.matches:
+                    print(addr)
                     referent = result.matches[0].referent
                     display_shortcuts(referent)
                     if len(addr) < 2:
@@ -382,6 +383,295 @@ def advanced_analysis(criterias: ICriteria):
         
         with NamedTemporaryFile() as tmp:
             data = requests.get('http://178.170.192.87:8004/permanent/normalized_works.csv')
+
+            open(tmp.name, 'wb').write(data.content)
+
+            input_data = pd.read_csv(tmp.name, encoding='utf8')
+            pretty_addresses = []
+
+            print(input_data)
+            input_data = input_data.drop("Unnamed: 0", axis=1)
+            print(input_data.shape)
+            banlist = []
+            addresses = input_data.iloc[:, 4]
+            for index, text in enumerate(addresses):
+                #print(text)
+                result = processor(str(text).replace('Российская Федерация,', '').replace('город Москва,', '').replace('внутригородская территория муниципальный округ,', ''))
+                if result.matches:
+                    referent = result.matches[0].referent
+                    display_shortcuts(referent)
+                    if len(addr) < 2:
+                        banlist.append(index)
+                    elif 'улица' not in addr[0].keys() or 'дом' not in addr[-1].keys():
+                        banlist.append(index)
+                    else:
+                        #print(addr[0]['улица'].title() + ' ' + addr[-1]['дом'])
+                        pretty_addresses.append(addr[0]['улица'].title() + ' ' + addr[-1]['дом'])
+                        #print(addr)
+                addr.clear()
+
+            input_data = input_data.drop(banlist)
+            result = secondmodel.predict(input_data)
+
+            result = pd.DataFrame(data=result, columns=['Second Result'], index=list(range(len(result))))
+
+            result['Pretty Addresses'] = pretty_addresses
+
+            result = result.dropna()
+
+            result = pd.concat([result, input_data], axis=1)
+
+            result = result.dropna()
+
+            print(result)
+
+
+    houses_data = pd.read_csv('housesdata.csv')
+    houses_data = houses_data.fillna(0)
+    
+    issues_data = []
+    #result = result.drop_duplicates(subset = ['Pretty Addresses', 'First Result'] if 'First Result' in result.columns else ['Pretty Addresses', 'Second Result'] )
+    #print("Final result")
+    #print(result)
+    result = result.reset_index()
+    houses_names = []
+    for index, row in result.iterrows():
+        address_info = houses_data[houses_data["NAME"] == row['Pretty Addresses']]
+        #print(address_info)
+        material_id = False if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else houses_data[houses_data["NAME"] == row['Pretty Addresses']].iloc[0]["COL_769"]
+        roof_id = False if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else houses_data[houses_data["NAME"] == row['Pretty Addresses']].iloc[0]["COL_781"]
+        #print(material_id)
+        #print(materials_dict.head(5))
+        #print(materials_dict[materials_dict["ID"] == material_id])
+        #print(roof_id)
+        #print("0" if roof_id == False else roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0])
+        workname = worksdict[row['First Result']][0] if 'First Result' in result.columns else row['Second Result']
+        issues_data.append(
+        {
+        'adress': row['Адрес'] if 'Адрес' in row.index else row['Address'].replace('Российская Федерация,', '').replace('город Москва,', ''), 
+        'workname': [workname.title()], 
+        "stats" : 
+        {
+            "Год постройки МКД" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_756"],
+            "Материал стен": "0" if material_id == False else (materials_dict[materials_dict["ID"] == float(material_id)/1]['NAME'].iloc[0]).title(),
+            "Количество этажей" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_759"],
+            "Количество подъездов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_760"],
+            "Количество квартир" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_761"],
+            "Износ объекта (по БТИ)" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_766"],
+            "Материал кровли" : "0" if roof_id == False else (roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0]).title(),
+            "Количество грузовых лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_3363"],
+            "Количество пассажирских лифтов" : "0" if len(houses_data[houses_data["NAME"] == row['Pretty Addresses']]) == 0 else address_info.iloc[0]["COL_771"]
+        },
+        'priority': "Плановая работа" if 'First Result' not in row.index else 'Срочная работа' if worksdict[row['First Result']][1] == '1' or worksdict[row['First Result']][2] == '1' else "Плановая работа",
+        'causes':[]
+        })
+        if 'First Result' in row.index:
+            if worksdict[row['First Result']][1] == '1': issues_data[index]['causes'].append('МосГаз')
+            if worksdict[row['First Result']][2] == '1': issues_data[index]['causes'].append('Авария')
+    emptylist =[]
+    houses_data1 = houses_data.copy()
+    houses_data1 = houses_data1.drop_duplicates(subset = ['NAME'])
+
+    for index, house in houses_data1.iterrows():
+        if house['NAME'] not in pretty_addresses:
+            if index != 0:
+                material_id = house["COL_769"]
+                material = "0" if material_id == 0 else materials_dict[materials_dict["ID"] == float(material_id)/1]['NAME'].iloc[0].title()
+                roof_id = house["COL_781"]
+                roof = "0" if roof_id == 0 else roofs_dict[roofs_dict["ID"] == float(roof_id)/1]['NAME'].iloc[0].title()
+                kirpichi = ['кирпичный', 'Смешанные', 'монолитно-кирпичные', 'Каменные, кирпичные', 'из мелких бетонных блоков', 'из природного камня', 'каменные', 'каменные и бетонные', 'каменные и деревянные', 'кирпичные', 'кирпичные облегченные', 'крупноблочные']
+                year = int(house["COL_756"])
+                #print(year)
+                #print(material_id)
+                #print(roof_id)
+
+                currentobject = {
+                'adress': ' '.join(house['NAME'].split()[:-1]) + ' Улица ' + house['NAME'].split()[-1] + ' Корпус 2', 
+                'workname': [], 
+                "stats" : 
+                {
+                    "Год постройки МКД" : house["COL_756"],
+                    "Материал стен": material,
+                    "Количество этажей" : house["COL_759"],
+                    "Количество подъездов" : house["COL_760"],
+                    "Количество квартир" : house["COL_761"],
+                    "Износ объекта (по БТИ)" : house["COL_766"],
+                    "Материал кровли" : roof,
+                    "Количество грузовых лифтов" : house["COL_3363"],
+                    "Количество пассажирских лифтов" : house["COL_771"]
+                },
+                'priority': "Плановая работа",
+                'causes':[]
+                }
+
+                if material != "0" and material in kirpichi:
+                    if year < 1980:
+                        currentobject['workname'].append(str('ремонт фасада').title())
+                        
+                    if year < 1985:
+                        currentobject['workname'].append(str('ремонт подъездов, направленный на восстановление их надлежащего состояния и проводимый при выполнении иных работ').title())
+
+                    if year < 1990:
+                        currentobject['workname'].append(str('Ремонт инженерной системы водоотведения (стояки)').title())
+
+                    if year < 1995:
+                        currentobject['workname'].append(str('Ремонт или замена лифтового оборудования').title())
+
+                    if year < 2000:
+                        currentobject['workname'].append(str('ремонт крыши').title())
+
+                    if year < 2005:
+                        currentobject['workname'].append(str('ремонт внутридомовой системы дымоудаления и противопожарной автоматики').title())
+
+                    else:
+                        currentobject['workname'].append(str('Ремонт систем электроснабжения').title())
+                        #print('added')
+                elif material != '0' and material not in kirpichi:
+                    if year < 1980:
+                        currentobject['workname'].append(str('ремонт подъездов, направленный на восстановление их надлежащего состояния и проводимый при выполнении иных работ').title())
+
+                    if year < 1985:
+                        currentobject['workname'].append(str('Ремонт или замена лифтового оборудования').title())
+
+                    if year < 1990:
+                        currentobject['workname'].append(str('ремонт фасада').title())
+
+                    if year < 1995:
+                        currentobject['workname'].append(str('ремонт крыши').title())
+
+                    if year < 2000:
+                        currentobject['workname'].append(str('Ремонт инженерной системы водоотведения (стояки)').title())
+                        
+                    if year < 2005:
+                        currentobject['workname'].append(str('ремонт внутридомовой системы дымоудаления и противопожарной автоматики').title())
+                    else:
+                        currentobject['workname'].append(str('Ремонт систем электроснабжения').title())
+                        #print('added')
+
+                if 'Новокосинская 51' in house['NAME']:
+                    print(currentobject)
+                issues_data.append(currentobject)
+    droplist=[]
+    for index, issue in enumerate(issues_data):
+        if len(issue['workname']) == 0:
+            if ("Новокосинская" in issue['adress']):
+                print("WATWATWATWATWATWAT")
+            droplist.append(index)
+    issues_data = [i for j, i in enumerate(issues_data) if j not in droplist]
+    if 'First Result' not in row.index:
+        new_issues = []
+        unique_addresses = []
+        for elem in issues_data:
+            if elem['adress'] not in unique_addresses:
+                unique_addresses.append(elem["adress"])
+        for address in unique_addresses:
+
+            address_works = []
+            address_priority = str()
+            address_stats = dict()
+            for issue in issues_data:
+                if issue["adress"] == address:
+                    if len(issue["workname"]) == 1:
+                        address_stats = issue["stats"]
+                        address_priority = issue["priority"]
+                        if issue["workname"][0] not in address_works: address_works.append(issue["workname"][0]) 
+                    else:
+                        address_stats = issue["stats"]
+                        address_priority = issue["priority"]
+                        address_works = issue["workname"]
+            new_issues.append({
+                'adress': address,
+                'workname': address_works,
+                'stats': address_stats,
+                'priority': address_priority
+            })
+        analysis_result = {'result': new_issues, 'type': 'Advanced', 'criterias': [objtype, worktype, dates], 'date': str(date.today()).replace('-', '.')}
+    else:
+        analysis_result = {'result': issues_data, 'type': 'Advanced', 'criterias': [objtype, worktype, dates], 'date': str(date.today()).replace('-', '.')}
+
+
+
+    id = Save(analysis_result)
+
+    analysis_result.pop('_id')
+    analysis_result['id'] = str(id)
+    #print(analysis_result)
+
+    return analysis_result
+"""
+@app.post('/advancedurl')
+def advanced_analysis(criterias: ICriteriaURL):
+    objtype = criterias.obj
+    worktype = criterias.work
+    dates = criterias.date
+    files = criterias.files
+    worksdict = dict()
+    with open('issuestoworks.json') as json_file:
+        worksdict = json.load(json_file)
+
+    roofs_dict = pd.read_excel('Storage/roofs.xlsx')
+
+    materials_dict = pd.read_excel('Storage/materials.xlsx')
+
+    processor = Processor([GEO, ADDRESS])
+
+    result = []
+
+    if worktype == 'Работы по содержанию':
+        model = CatBoostClassifier()
+
+        model.load_model('./model/catboost_model2t.bin')
+
+        with NamedTemporaryFile() as tmp:
+            data = requests.get(f'http://178.170.192.87:8004/permanent/{files['incidents']}')
+
+            open(tmp.name, 'wb').write(data.content)
+
+            input_data = pd.read_csv(tmp.name, encoding='utf8')
+
+            print(input_data)
+            pretty_addresses = []
+            input_data = input_data.drop("Unnamed: 0", axis=1)
+            banlist = []
+            addresses = input_data.iloc[:, 2]
+            for index, text in enumerate(addresses):
+                result = processor(str(text))
+                if result.matches:
+                    referent = result.matches[0].referent
+                    display_shortcuts(referent)
+                    if len(addr) < 2:
+                        banlist.append(index)
+                    elif 'улица' not in addr[0].keys() or 'дом' not in addr[-1].keys():
+                        banlist.append(index)
+                    else:
+                        pretty_addresses.append(addr[0]['улица'].title() + ' ' + addr[-1]['дом'])
+                        #print(addr)
+                addr.clear()
+            #print(banlist)
+
+            input_data = input_data.drop(banlist)
+
+            result = model.predict(input_data)
+
+            #print(result.shape)
+
+            result = pd.DataFrame(data=result, columns=['First Result'], index=list(range(len(result))))
+
+            result['Pretty Addresses'] = pretty_addresses
+
+            result = pd.concat([result, input_data], axis=1)
+
+            result = result.dropna()        
+
+            print(result)
+    elif worktype == 'Капитальный ремонт':
+
+        secondmodel = CatBoostClassifier()
+
+        secondmodel.load_model('./model/catboost_model3t.bin')
+        
+        with NamedTemporaryFile() as tmp:
+            data = requests.get(f'http://178.170.192.87:8004/permanent/{files['works']}')
 
             open(tmp.name, 'wb').write(data.content)
 
@@ -501,9 +791,7 @@ def advanced_analysis(criterias: ICriteria):
 
     return analysis_result
 
-
-
-
+"""
 
     
 
